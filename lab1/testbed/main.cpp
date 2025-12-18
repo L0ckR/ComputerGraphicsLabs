@@ -20,6 +20,7 @@ struct Vertex {
 	veekay::vec3 position;
 	veekay::vec3 normal;
 	veekay::vec2 uv;
+	veekay::vec3 color;
 	// NOTE: You can add more attributes
 };
 
@@ -240,6 +241,12 @@ void initialize(VkCommandBuffer cmd) {
 				.binding = 0,
 				.format = VK_FORMAT_R32G32_SFLOAT,
 				.offset = offsetof(Vertex, uv),
+			},
+			{
+				.location = 3,
+				.binding = 0,
+				.format = VK_FORMAT_R32G32B32_SFLOAT,
+				.offset = offsetof(Vertex, color),
 			},
 		};
 
@@ -529,17 +536,7 @@ void initialize(VkCommandBuffer cmd) {
 			{0.0f, 0.0f, -1.0f},
 		};
 
-		std::vector<Vertex> vertices;
-		vertices.reserve(positions.size());
-		for (const auto& position : positions) {
-			vertices.push_back(Vertex{
-				.position = position,
-				.normal = veekay::vec3::normalized(position),
-				.uv = {0.0f, 0.0f},
-			});
-		}
-
-		std::vector<uint32_t> indices = {
+		const uint32_t face_indices[][3] = {
 			0, 4, 2,
 			0, 3, 4,
 			0, 5, 3,
@@ -549,6 +546,41 @@ void initialize(VkCommandBuffer cmd) {
 			1, 3, 5,
 			1, 5, 2,
 		};
+
+		const veekay::vec3 face_colors[] = {
+			{1.0f, 0.4f, 0.4f},
+			{0.4f, 1.0f, 0.4f},
+			{0.4f, 0.6f, 1.0f},
+			{1.0f, 0.9f, 0.4f},
+			{0.8f, 0.4f, 1.0f},
+			{0.4f, 1.0f, 0.9f},
+			{1.0f, 0.6f, 0.2f},
+			{0.9f, 0.7f, 0.9f},
+		};
+
+		std::vector<Vertex> vertices;
+		vertices.reserve(24);
+
+		for (size_t face = 0; face < 8; ++face) {
+			const veekay::vec3 a = positions[face_indices[face][0]];
+			const veekay::vec3 b = positions[face_indices[face][1]];
+			const veekay::vec3 c = positions[face_indices[face][2]];
+
+			veekay::vec3 normal = veekay::vec3::cross(b - a, c - a);
+			normal = veekay::vec3::normalized(normal);
+
+			const veekay::vec3 color = face_colors[face];
+			vertices.push_back(Vertex{.position = a, .normal = normal, .uv = {0.0f, 0.0f}, .color = color});
+			vertices.push_back(Vertex{.position = b, .normal = normal, .uv = {1.0f, 0.0f}, .color = color});
+			vertices.push_back(Vertex{.position = c, .normal = normal, .uv = {0.0f, 1.0f}, .color = color});
+		}
+
+		std::vector<uint32_t> indices;
+		indices.reserve(vertices.size());
+		const uint32_t vertex_count = static_cast<uint32_t>(vertices.size());
+		for (uint32_t i = 0; i < vertex_count; ++i) {
+			indices.push_back(i);
+		}
 
 		octahedron_mesh.vertex_buffer = new veekay::graphics::Buffer(
 			vertices.size() * sizeof(Vertex), vertices.data(),
@@ -567,7 +599,7 @@ void initialize(VkCommandBuffer cmd) {
 		.transform = Transform{
 			.scale = {0.9f, 0.9f, 0.9f},
 		},
-		.albedo_color = veekay::vec3{0.9f, 0.6f, 0.2f}
+		.albedo_color = veekay::vec3{1.0f, 1.0f, 1.0f}
 	});
 }
 
