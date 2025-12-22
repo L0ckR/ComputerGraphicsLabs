@@ -524,7 +524,6 @@ void initialize(VkCommandBuffer cmd) {
 		vkUpdateDescriptorSets(device, sizeof(write_infos) / sizeof(write_infos[0]),
 		                       write_infos, 0, nullptr);
 	}
-
 	// NOTE: Octahedron mesh initialization
 	{
 		std::vector<veekay::vec3> positions = {
@@ -559,7 +558,10 @@ void initialize(VkCommandBuffer cmd) {
 		};
 
 		std::vector<Vertex> vertices;
-		vertices.reserve(24);
+		vertices.reserve(8 * (3+3)); // 8 граней * (3 вертекса рамки + 3 вертекса внутренней грани)
+
+		const float face_shrink = 0.92f;
+		const veekay::vec3 border_color = {0.0f, 0.0f, 0.0f};
 
 		for (size_t face = 0; face < 8; ++face) {
 			const veekay::vec3 a = positions[face_indices[face][0]];
@@ -570,9 +572,20 @@ void initialize(VkCommandBuffer cmd) {
 			normal = veekay::vec3::normalized(normal);
 
 			const veekay::vec3 color = face_colors[face];
-			vertices.push_back(Vertex{.position = a, .normal = normal, .uv = {0.0f, 0.0f}, .color = color});
-			vertices.push_back(Vertex{.position = b, .normal = normal, .uv = {1.0f, 0.0f}, .color = color});
-			vertices.push_back(Vertex{.position = c, .normal = normal, .uv = {0.0f, 1.0f}, .color = color});
+			const veekay::vec3 centroid = (a + b + c) / 3.0f;
+			const veekay::vec3 sa = centroid + (a - centroid) * face_shrink;
+			const veekay::vec3 sb = centroid + (b - centroid) * face_shrink;
+			const veekay::vec3 sc = centroid + (c - centroid) * face_shrink;
+
+			// 1) Большой треугольник-рамка (чёрный)
+			vertices.push_back(Vertex{ .position = a, .normal = normal, .uv = {0.0f, 0.0f}, .color = border_color });
+			vertices.push_back(Vertex{ .position = b, .normal = normal, .uv = {1.0f, 0.0f}, .color = border_color });
+			vertices.push_back(Vertex{ .position = c, .normal = normal, .uv = {0.0f, 1.0f}, .color = border_color });
+
+			// 2) Внутренний сжатый треугольник (цветной)
+			vertices.push_back(Vertex{ .position = sa, .normal = normal, .uv = {0.0f, 0.0f}, .color = color });
+			vertices.push_back(Vertex{ .position = sb, .normal = normal, .uv = {1.0f, 0.0f}, .color = color });
+			vertices.push_back(Vertex{ .position = sc, .normal = normal, .uv = {0.0f, 1.0f}, .color = color });
 		}
 
 		std::vector<uint32_t> indices;
@@ -590,8 +603,9 @@ void initialize(VkCommandBuffer cmd) {
 			indices.size() * sizeof(uint32_t), indices.data(),
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
-		octahedron_mesh.indices = uint32_t(indices.size());
+		octahedron_mesh.indices = static_cast<uint32_t>(indices.size());
 	}
+
 
 	// NOTE: Add models to scene
 	models.emplace_back(Model{
