@@ -7,7 +7,6 @@ layout (location = 2) in vec2 v_uv;
 layout (location = 0) out vec3 f_position;
 layout (location = 1) out vec3 f_normal;
 layout (location = 2) out vec2 f_uv;
-layout (location = 3) out vec4 f_light_space;
 
 layout (binding = 0, std140) uniform SceneUniforms {
 	mat4 view_projection;
@@ -16,6 +15,8 @@ layout (binding = 0, std140) uniform SceneUniforms {
 	vec4 ambient_color_intensity;
 	vec4 directional_direction_intensity;
 	vec4 directional_color;
+	vec4 light_counts;
+	vec4 shadow_params;
 };
 
 layout (binding = 1, std140) uniform ModelUniforms {
@@ -34,5 +35,4 @@ void main() {
 	f_position = position.xyz;
 	f_normal = normal;
 	f_uv = v_uv;
-	f_light_space = light_view_projection * position;
 }
