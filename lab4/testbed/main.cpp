@@ -229,6 +229,20 @@ veekay::vec3 directionFromAngles(const veekay::vec2& angles) {
 	};
 }
 
+veekay::mat4 orthographicMatrix(float left, float right,
+                                float bottom, float top,
+                                float near, float far) {
+	veekay::mat4 result{};
+	result[0][0] = 2.0f / (right - left);
+	result[1][1] = 2.0f / (top - bottom);
+	result[2][2] = 1.0f / (far - near);
+	result[3][0] = -(right + left) / (right - left);
+	result[3][1] = -(top + bottom) / (top - bottom);
+	result[3][2] = -near / (far - near);
+	result[3][3] = 1.0f;
+	return result;
+}
+
 veekay::mat4 lookAtMatrix(const veekay::vec3& position, const veekay::vec3& target) {
 	const veekay::vec3 world_up = {0.0f, -1.0f, 0.0f};
 	veekay::vec3 front = veekay::vec3::normalized(target - position);
@@ -1174,11 +1188,11 @@ void initialize(VkCommandBuffer cmd) {
 	ambient_light.color = {0.08f, 0.08f, 0.1f};
 	ambient_light.intensity = 0.12f;
 
-	directional_light.direction = {0.25f, 1.0f, 0.2f};
+	directional_light.direction = {0.25f, -1.0f, 0.2f};
 	directional_light.color = {1.0f, 0.98f, 0.95f};
 	directional_light.intensity = 0.6f;
 
-	point_light_count = 2;
+	point_light_count = 0;
 	point_lights_settings[0] = {
 		.position = {-2.0f, -2.0f, -2.0f},
 		.intensity = 10.0f,
@@ -1190,7 +1204,7 @@ void initialize(VkCommandBuffer cmd) {
 		.color = {0.7f, 0.85f, 1.0f},
 	};
 
-	spot_light_count = 1;
+	spot_light_count = 0;
 	spot_lights_settings[0] = {
 		.position = {0.0f, -1.4f, -3.0f},
 		.intensity = 12.0f,
@@ -1455,7 +1469,10 @@ void update(double time) {
 	veekay::vec3 light_to_scene = -directional_direction;
 	veekay::vec3 light_position = scene_center + light_to_scene * light_distance;
 	veekay::mat4 light_view = lookAtMatrix(light_position, scene_center);
-	veekay::mat4 light_projection = veekay::mat4::projection(70.0f, 1.0f, 0.1f, 20.0f);
+	const float shadow_extent = 8.0f;
+	veekay::mat4 light_projection = orthographicMatrix(-shadow_extent, shadow_extent,
+	                                                   -shadow_extent, shadow_extent,
+	                                                   0.1f, 25.0f);
 
 	SceneUniforms scene_uniforms{
 		.view_projection = camera.view_projection(aspect_ratio),
@@ -1487,7 +1504,7 @@ void update(double time) {
 		},
 		.shadow_params = {
 			0.0015f,
-			0.5f,
+			1.0f,
 			0.0f,
 			0.0f,
 		},
