@@ -558,9 +558,11 @@ void initialize(VkCommandBuffer cmd) {
 		};
 
 		std::vector<Vertex> vertices;
-		vertices.reserve(8 * (3+3)); // 8 граней * (3 вертекса рамки + 3 вертекса внутренней грани)
+		std::vector<uint32_t> indices;
+		vertices.reserve(8 * 9);
+		indices.reserve(8 * 7 * 3);
 
-		const float face_shrink = 0.92f;
+		const float face_shrink = 0.9f;
 		const veekay::vec3 border_color = {0.0f, 0.0f, 0.0f};
 
 		for (size_t face = 0; face < 8; ++face) {
@@ -577,22 +579,25 @@ void initialize(VkCommandBuffer cmd) {
 			const veekay::vec3 sb = centroid + (b - centroid) * face_shrink;
 			const veekay::vec3 sc = centroid + (c - centroid) * face_shrink;
 
-			// 1) Большой треугольник-рамка (чёрный)
-			vertices.push_back(Vertex{ .position = a, .normal = normal, .uv = {0.0f, 0.0f}, .color = border_color });
-			vertices.push_back(Vertex{ .position = b, .normal = normal, .uv = {1.0f, 0.0f}, .color = border_color });
-			vertices.push_back(Vertex{ .position = c, .normal = normal, .uv = {0.0f, 1.0f}, .color = border_color });
+			const uint32_t base = static_cast<uint32_t>(vertices.size());
+			vertices.push_back(Vertex{.position = a, .normal = normal, .uv = {0.0f, 0.0f}, .color = border_color});
+			vertices.push_back(Vertex{.position = b, .normal = normal, .uv = {1.0f, 0.0f}, .color = border_color});
+			vertices.push_back(Vertex{.position = c, .normal = normal, .uv = {0.0f, 1.0f}, .color = border_color});
+			vertices.push_back(Vertex{.position = sa, .normal = normal, .uv = {0.0f, 0.0f}, .color = color});
+			vertices.push_back(Vertex{.position = sb, .normal = normal, .uv = {1.0f, 0.0f}, .color = color});
+			vertices.push_back(Vertex{.position = sc, .normal = normal, .uv = {0.0f, 1.0f}, .color = color});
 
-			// 2) Внутренний сжатый треугольник (цветной)
-			vertices.push_back(Vertex{ .position = sa, .normal = normal, .uv = {0.0f, 0.0f}, .color = color });
-			vertices.push_back(Vertex{ .position = sb, .normal = normal, .uv = {1.0f, 0.0f}, .color = color });
-			vertices.push_back(Vertex{ .position = sc, .normal = normal, .uv = {0.0f, 1.0f}, .color = color });
-		}
-
-		std::vector<uint32_t> indices;
-		indices.reserve(vertices.size());
-		const uint32_t vertex_count = static_cast<uint32_t>(vertices.size());
-		for (uint32_t i = 0; i < vertex_count; ++i) {
-			indices.push_back(i);
+			// Border ring (6 triangles)
+			indices.insert(indices.end(), {
+				base + 0, base + 1, base + 4,
+				base + 0, base + 4, base + 3,
+				base + 1, base + 2, base + 5,
+				base + 1, base + 5, base + 4,
+				base + 2, base + 0, base + 3,
+				base + 2, base + 3, base + 5,
+				// Inner face
+				base + 3, base + 4, base + 5,
+			});
 		}
 
 		octahedron_mesh.vertex_buffer = new veekay::graphics::Buffer(
@@ -671,7 +676,9 @@ void update(double time) {
 
 	float angle = animation_time * rotation_speed;
 	if (!models.empty()) {
-		models[0].transform.rotation = {angle, angle, 0.0f};
+		for (size_t i = 0; i < models.size(); ++i) {
+			models[i].transform.rotation = {angle, angle, 0.0f};
+		}
 	}
 
 	if (!ImGui::IsWindowHovered()) {
