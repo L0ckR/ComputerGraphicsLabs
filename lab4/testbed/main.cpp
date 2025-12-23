@@ -933,16 +933,17 @@ void initialize(VkCommandBuffer cmd) {
 			return;
 		}
 
-		VkSamplerCreateInfo sampler_info{
-			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.magFilter = VK_FILTER_LINEAR,
-			.minFilter = VK_FILTER_LINEAR,
-			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
-			.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-			.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-			.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
-		};
+		VkSamplerCreateInfo sampler_info{};
+		sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		sampler_info.magFilter = VK_FILTER_LINEAR;
+		sampler_info.minFilter = VK_FILTER_LINEAR;
+		sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		sampler_info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+		sampler_info.compareEnable = VK_TRUE;
+		sampler_info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 		if (vkCreateSampler(device, &sampler_info, nullptr, &shadow_sampler) != VK_SUCCESS) {
 			std::cerr << "Failed to create shadow sampler\n";
@@ -1062,12 +1063,12 @@ void initialize(VkCommandBuffer cmd) {
 		//  |   `--,   |
 		//  |       \  |
 		// (v3)------(v2)
-		std::vector<Vertex> vertices = {
-			{{-5.0f, 0.0f, 5.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{5.0f, 0.0f, 5.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-			{{5.0f, 0.0f, -5.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-			{{-5.0f, 0.0f, -5.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-		};
+	std::vector<Vertex> vertices = {
+		{{-5.0f, 0.0f, 5.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{5.0f, 0.0f, 5.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
+		{{5.0f, 0.0f, -5.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{-5.0f, 0.0f, -5.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}},
+	};
 
 		std::vector<uint32_t> indices = {
 			0, 1, 2, 2, 3, 0
@@ -1186,11 +1187,11 @@ void initialize(VkCommandBuffer cmd) {
 	          8.0f);
 
 	ambient_light.color = {0.08f, 0.08f, 0.1f};
-	ambient_light.intensity = 0.12f;
+	ambient_light.intensity = 0.18f;
 
-	directional_light.direction = {0.25f, -1.0f, 0.2f};
+	directional_light.direction = {0.3f, -1.0f, 0.2f};
 	directional_light.color = {1.0f, 0.98f, 0.95f};
-	directional_light.intensity = 0.6f;
+	directional_light.intensity = 1.0f;
 
 	point_light_count = 0;
 	point_lights_settings[0] = {
@@ -1504,7 +1505,7 @@ void update(double time) {
 		},
 		.shadow_params = {
 			0.0015f,
-			1.0f,
+			0.15f,
 			0.0f,
 			0.0f,
 		},

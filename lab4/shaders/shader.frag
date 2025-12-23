@@ -42,30 +42,30 @@ layout (binding = 3, std430) readonly buffer SpotLightBuffer {
 	SpotLight spot_lights[];
 };
 
-layout (binding = 4) uniform sampler2D shadow_map;
+layout (binding = 4) uniform sampler2DShadow shadow_map;
 
-float shadowFactor(vec3 world_pos, vec3 normal, vec3 light_dir) {
+float shadowVisibility(vec3 world_pos, vec3 normal, vec3 light_dir) {
 	vec4 light_clip = light_view_projection * vec4(world_pos, 1.0f);
 	if (light_clip.w <= 0.0f) {
-		return 0.0f;
+		return 1.0f;
 	}
 
 	vec3 proj = light_clip.xyz / light_clip.w;
 	vec2 uv = proj.xy * 0.5f + 0.5f;
 
 	if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f) {
-		return 0.0f;
+		return 1.0f;
 	}
 
 	float current_depth = proj.z;
 	if (current_depth < 0.0f || current_depth > 1.0f) {
-		return 0.0f;
+		return 1.0f;
 	}
 
 	float bias = max(shadow_params.x * (1.0f - max(dot(normal, light_dir), 0.0f)),
 	                 shadow_params.x * 0.25f);
-	float closest = texture(shadow_map, uv).r;
-	return (current_depth - bias) > closest ? shadow_params.y : 0.0f;
+	float visibility = texture(shadow_map, vec3(uv, current_depth - bias));
+	return mix(shadow_params.y, 1.0f, visibility);
 }
 
 void main() {
@@ -78,14 +78,13 @@ void main() {
 	vec3 color = albedo * ambient_color_intensity.rgb * ambient_color_intensity.w;
 
 	vec3 dir_light_dir = normalize(-directional_direction_intensity.xyz);
-	float dir_shadow = shadowFactor(f_position, normal, dir_light_dir);
-	float dir_shadow_scale = 1.0f - dir_shadow;
+	float dir_visibility = shadowVisibility(f_position, normal, dir_light_dir);
 	float dir_diffuse = max(dot(normal, dir_light_dir), 0.0f);
 	vec3 dir_half = normalize(dir_light_dir + view_dir);
 	float dir_specular = dir_diffuse > 0.0f
 		? pow(max(dot(normal, dir_half), 0.0f), shininess)
 		: 0.0f;
-	color += (albedo * dir_diffuse + specular_color * dir_specular) * dir_shadow_scale
+	color += (albedo * dir_diffuse + specular_color * dir_specular) * dir_visibility
 		* directional_color.rgb * directional_direction_intensity.w;
 
 	int point_count = int(light_counts.x + 0.5f);
